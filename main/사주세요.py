@@ -72,7 +72,7 @@ def start_drag_capture():
     is_capturing = True
     capture_start_time = time.time()
     py_path = r"C:\Program Files\Python312\python.exe"
-    script_path = r"C:\Users\user\Desktop\물품구매 스크린샷\auto_shopping\utils\drag_capture_tool_single_capture.py"
+    script_path = r"C:\\Users\\user\\Desktop\\auto_shopping_refactored_완전체_with_capture\\modules\\drag_capture_tool_single_capture.py"
     if os.path.exists(script_path):
         capture_process = subprocess.Popen([py_path, script_path])
     poll_for_new_capture_loop()

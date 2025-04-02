@@ -124,6 +124,7 @@ def go_to_main_form():
 
 ensure_single_instance()
 root = tk.Tk()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 root.title("사주세요 v1.0 | 구매요청서")
 center_window(root, 360, 240)
 root.configure(bg="#f0f2f5")
@@ -138,7 +139,7 @@ intro_label.pack(pady=(40, 20))
 logo_frame = tk.Frame(start_frame, bg="#f0f2f5")
 logo_frame.pack()
 
-logo_path = os.path.join("assets", "coupang.png")
+logo_path = os.path.join(BASE_DIR, "..", "assets", "coupang.png")
 if os.path.exists(logo_path):
     logo_img = Image.open(logo_path)
     logo_img = logo_img.resize((140, 45))

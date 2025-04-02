@@ -1,4 +1,3 @@
-
 print("🐍 실행 중인 drag_capture_tool 파일 확인용 - THIS IS THE RIGHT FILE")
 import sys
 import os
@@ -11,10 +10,10 @@ os.makedirs(save_dir, exist_ok=True)
 popup_window = None  # 전역 팝업창
 
 class CaptureOverlay(QtWidgets.QWidget):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         print("🖼️ [Overlay] CaptureOverlay 객체 생성됨")
-        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint | QtCore.Qt.Tool)
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint | QtCore.Qt.FramelessWindowHint | QtCore.Qt.Window)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         self.setCursor(QtCore.Qt.CrossCursor)
 
@@ -25,7 +24,11 @@ class CaptureOverlay(QtWidgets.QWidget):
         self.begin = QtCore.QPoint()
         self.end = QtCore.QPoint()
         self.drawing = False
-        # self.show() 제거됨
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setFocus()
+        self.activateWindow()
+        self.raise_()
+        print("[DEBUG] Overlay 창에 포커스 설정됨")
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
@@ -55,9 +58,16 @@ class CaptureOverlay(QtWidgets.QWidget):
         self.drawing = False
         self.update()
         print("🖼️ [Overlay] 마우스 놓음 → 캡처 시도")
-        self.close()
+        self.hide()
         QtCore.QTimer.singleShot(100, self.capture_screen)
-        QtCore.QTimer.singleShot(300, show_popup_again)
+        QtCore.QTimer.singleShot(100, show_popup_again)
+
+    def keyPressEvent(self, event):
+        print("[DEBUG] keyPressEvent 진입됨")
+        if event.key() == QtCore.Qt.Key_Escape:
+            print("❌ [Overlay] ESC 눌림 → 캡처 취소")
+            self.hide()
+            show_popup_again()
 
     def capture_screen(self):
         rect = QtCore.QRect(self.begin, self.end).normalized()
@@ -81,8 +91,11 @@ class SKeyPopup(QtWidgets.QWidget):
         label.setAlignment(QtCore.Qt.AlignCenter)
         layout.addWidget(label)
         self.setLayout(layout)
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.center_on_screen()
         self.show()
+        self.raise_()
+        self.activateWindow()
 
     def center_on_screen(self):
         screen = QtWidgets.QApplication.primaryScreen().geometry()
@@ -91,18 +104,19 @@ class SKeyPopup(QtWidgets.QWidget):
         self.move(x, y)
 
     def keyPressEvent(self, event):
+        print("[DEBUG] keyPressEvent 진입됨")
         if event.key() == QtCore.Qt.Key_S:
             print("🟡 [Popup] S 키 입력됨 → Overlay 실행")
             self.hide()
             QtCore.QTimer.singleShot(100, self.launch_overlay)
         elif event.key() == QtCore.Qt.Key_Escape:
-            print("🛑 ESC 입력 → 앱 종료")
-            os._exit(99)
+            print("❌ ESC 입력 → 앱 종료")
+            QtWidgets.QApplication.quit()
 
     def launch_overlay(self):
         try:
-            self.overlay = CaptureOverlay()
-            self.overlay.show()  # 이 위치에서만 show
+            self.overlay = CaptureOverlay(parent=self)
+            self.overlay.show()
         except Exception as e:
             print("❗ Overlay 예외 발생:", e)
 

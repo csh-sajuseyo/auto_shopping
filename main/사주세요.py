@@ -245,6 +245,7 @@ canvas = tk.Canvas(list_frame, bg="white", height=120)
 scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
 uploaded_list_frame = tk.Frame(canvas, bg="white")
 uploaded_list_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
 canvas.create_window((0, 0), window=uploaded_list_frame, anchor="nw")
 canvas.configure(yscrollcommand=scrollbar.set)
 

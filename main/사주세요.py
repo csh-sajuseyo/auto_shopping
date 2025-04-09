@@ -29,6 +29,12 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
+from google_api_uploader import upload_file_to_drive, append_to_sheet
+
+CREDENTIALS_PATH = "credentials.json"
+DRIVE_FOLDER_ID = "1mSSW4pONiSyrYJS2XHUHL2NCugEponb8"
+SHEET_ID = "1KbY0lHEGGrkVNWER5iJsGM4dIYp69r7cJbzkPOdr3xk"
+
 import glob
 import shutil
 import subprocess
@@ -55,6 +61,41 @@ def update_uploaded_list():
         label = tk.Label(uploaded_list_frame, text=name, anchor="w", bg="white", font=("맑은 고딕", 10))
         label.pack(fill="x", padx=5, pady=2)
 
+    uploaded_list_frame.update_idletasks()
+    frame_height = uploaded_list_frame.winfo_height()
+    canvas_height = int(canvas.cget("height"))
+    if frame_height < canvas_height:
+        uploaded_list_frame.configure(height=canvas_height)
+    else:
+        uploaded_list_frame.configure(height="")  # 원상 복구
+        canvas.configure(scrollregion=canvas.bbox("all"))
+    region = canvas.bbox("all")
+    if region:
+        x0, y0, x1, y1 = region
+        y0 = max(0, y0)
+        canvas.configure(scrollregion=(x0, y0, x1, y1))
+    uploaded_list_frame.update_idletasks()
+    canvas_height = int(canvas.cget("height"))
+    frame_height = uploaded_list_frame.winfo_height()
+    if frame_height < canvas_height:
+        filler = tk.Frame(uploaded_list_frame, height=canvas_height - frame_height, bg="white")
+        filler.pack()
+    uploaded_list_frame.update_idletasks()
+    canvas_height = int(canvas.cget("height"))
+    frame_height = uploaded_list_frame.winfo_height()
+    canvas.configure(scrollregion=canvas.bbox("all"))
+    if frame_height <= canvas_height:
+        canvas.unbind_all("<MouseWheel>")
+    else:
+        canvas.yview_moveto(0)
+    uploaded_list_frame.update_idletasks()
+    canvas_height = int(canvas.cget("height"))
+    frame_height = uploaded_list_frame.winfo_height()
+    if frame_height <= canvas_height:
+        canvas.yview_moveto(0)
+    canvas.update_idletasks()
+    canvas.configure(scrollregion=canvas.bbox("all"))
+    canvas.yview_moveto(0)
 def find_latest_capture():
     files = glob.glob(os.path.join(WATCH_FOLDER, "screenshot_crop_*.png"))
     if not files:
@@ -199,7 +240,30 @@ def check_and_submit():
         return
 
     # 추후 구글 업로드 연동 자리
-    tk.messagebox.showinfo("완료", "✅ 구매 요청이 접수되었습니다.")
+    uploaded_urls = []
+    for local_path in uploaded_files:
+        try:
+            file_id = upload_file_to_drive(local_path, DRIVE_FOLDER_ID, CREDENTIALS_PATH)
+            file_url = f"https://drive.google.com/file/d/{file_id}/view"
+            uploaded_urls.append(file_url)
+            os.remove(local_path)  # 업로드 후 로컬 파일 삭제
+        except Exception as e:
+            print("❗ 업로드 실패:", e)
+
+    row_data = [
+        "쿠팡",
+        entries["품의 제목"].get().strip(),
+        entries["품의 금액"].get().strip(),
+        entries["총 구매 금액"].get().strip(),
+        entries["요청자(성함)"].get().strip(),
+        ", ".join(uploaded_urls)
+    ]
+
+    try:
+        append_to_sheet(SHEET_ID, row_data, CREDENTIALS_PATH)
+        tk.messagebox.showinfo("완료", "✅ 구매 요청이 접수되었습니다.")
+    except Exception as e:
+        tk.messagebox.showerror("오류", f"❗ 시트 기록 실패: {e}")
 
 # 구매 요청서 화면
 form_frame = tk.Frame(root, bg="#f0f2f5")
@@ -241,11 +305,23 @@ list_label.pack(pady=(20, 5))
 list_frame = tk.Frame(form_frame, bg="white", bd=1, relief="solid")
 list_frame.pack(padx=30, pady=5, fill="both", expand=False)
 
+
+
 canvas = tk.Canvas(list_frame, bg="white", height=120)
+
+def safe_scroll(event):
+    # 아래로 스크롤은 항상 허용
+    if event.delta < 0:
+        canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    else:
+        # 위로 스크롤은 scroll이 필요할 때만 허용
+        if uploaded_list_frame.winfo_height() > canvas.winfo_height():
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+canvas.bind_all("<MouseWheel>", safe_scroll)
 scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=canvas.yview)
 uploaded_list_frame = tk.Frame(canvas, bg="white")
 uploaded_list_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
 canvas.create_window((0, 0), window=uploaded_list_frame, anchor="nw")
 canvas.configure(yscrollcommand=scrollbar.set)
 

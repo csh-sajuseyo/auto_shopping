@@ -1,0 +1,9 @@
+# Google API Credentials (보안 파일)
+credentials.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# 기타 숨김 파일/폴더
+.DS_Store
